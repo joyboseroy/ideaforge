@@ -146,6 +146,20 @@ Be specific and technical. Base claims on the KG analysis above."""
         # Fallback if parsing failed
         if not sections["title"]:
             sections["title"] = f"System and Method for {idea}"
+        if not sections["field"]:
+            sections["field"] = f"The present invention relates to {idea}."
+        if not sections["background"]:
+            sections["background"] = (
+                f"There exists a need for {idea}. "
+                f"Existing solutions do not adequately address this need."
+            )
+        if not sections["abstract"]:
+            sections["abstract"] = (
+                f"A system and method for {idea} is disclosed. "
+                f"The invention applies multiple innovation methodologies "
+                f"grounded in a persistent knowledge graph to identify "
+                f"cross-methodology convergent claims."
+            )
         if not sections["claims"]:
             sections["claims"] = [
                 c.get("text", "") for c in strongest[:3]
