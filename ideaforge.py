@@ -22,6 +22,18 @@ from agents.methodology_agents import (
     TRIZAgent,
     DesignThinkingAgent,
     SCAMPERAgent,
+)
+from agents.patent_agent import PatentAgent
+from agents.prior_art_agent import PriorArtAgent
+from agents.embedding_synthesis import EmbeddingSynthesisAgent
+from agents.innovation_score import compute_innovation_scores, print_innovation_report
+from agents.prior_art_agent import PriorArtAgent
+from agents.embedding_synthesis import EmbeddingSynthesisAgent
+from agents.innovation_score import compute_innovation_scores, print_innovation_report
+_PLACEHOLDER = (
+    TRIZAgent,
+    DesignThinkingAgent,
+    SCAMPERAgent,
     SynthesisAgent,
 )
 from agents.patent_agent import PatentAgent
