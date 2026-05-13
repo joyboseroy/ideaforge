@@ -1,3 +1,7 @@
 falkordb
 mcp
 ollama
+sentence-transformers
+pyvis
+networkx
+matplotlib
