@@ -86,22 +86,34 @@ def fetch_graph_data(graph: IdeaGraph) -> tuple[list, list]:
         "PriorArt", "Claim"
     ]
 
+    # Property to use as label for each node type
+    label_prop = {
+        "Problem":        "statement",
+        "Contradiction":  "improving",
+        "Principle":      "name",
+        "UserNeed":       "persona",
+        "Transformation": "scamper_type",
+        "Analogy":        "source_domain",
+        "PriorArt":       "title",
+        "Claim":          "text",
+    }
+
     for node_type in node_types:
+        prop = label_prop.get(node_type, "id")
         try:
             result = graph.graph.query(
-                f"MATCH (n:{node_type}) "
-                f"RETURN n.id AS id, "
-                f"COALESCE(n.statement, n.name, n.improving, n.persona, "
-                f"n.scamper_type, n.source_domain, n.title, n.text, n.id) AS label"
+                f"MATCH (n:{node_type}) RETURN n.id, n.{prop}"
             )
             for row in result.result_set:
+                node_id = row[0] if row[0] else f"{node_type}_{len(nodes)}"
+                raw_label = row[1] if row[1] else node_id
                 nodes.append({
-                    "id": row[0],
-                    "label": str(row[1])[:40] if row[1] else row[0],
+                    "id": node_id,
+                    "label": str(raw_label)[:35],
                     "type": node_type,
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [Visualize] Node query error ({node_type}): {e}")
 
     # Fetch edges
     edge_types = [
