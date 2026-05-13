@@ -1,6 +1,6 @@
 # IdeaForge
 
-**A Knowledge Graph-Grounded Multi-Methodology Agent Framework for Innovation Analysis and Patent Claim Generation**
+**A Knowledge Graph-Grounded Multi-Agent Framework for Cross-Methodology Innovation Analysis and Patent Claim Generation**
 
 Companion code for the paper:
 
@@ -11,15 +11,17 @@ Companion code for the paper:
 
 ## What this is
 
-Most innovation AI tools apply a single methodology (TRIZ, Design Thinking, or SCAMPER) in isolation. IdeaForge is different:
+Most AI innovation tools apply a single methodology (TRIZ, Design Thinking, or SCAMPER) in isolation and discard intermediate reasoning. IdeaForge is different:
 
-1. Runs **multiple specialist agents** — TRIZ, Design Thinking, SCAMPER — in parallel
-2. Stores every insight as a node in a **persistent FalkorDB knowledge graph**
-3. A **synthesis agent** traverses the KG to find claims independently derived by multiple methodologies — these are the strongest patent candidates
-4. A **patent agent** drafts structured claims grounded in the KG subgraph — not raw LLM hallucination
-5. An **MCP server** exposes KG tools to external agents
+1. Runs **multiple specialist agents** — TRIZ, Design Thinking, SCAMPER — each writing structured nodes and edges to a **persistent FalkorDB knowledge graph**
+2. A **prior art agent** searches arXiv for related work and populates PriorArt nodes
+3. An **embedding synthesis agent** uses sentence-transformer cosine similarity to detect claims independently derived by multiple methodologies — these are the strongest patent candidates
+4. **InnovationScore** ranks all claims using a weighted formula combining convergence, diversity, strength, and prior art challenge count
+5. A **patent agent** drafts structured claims grounded in the KG subgraph — not raw LLM hallucination
+6. A **visualizer** generates interactive HTML and static PNG graph images for demos and papers
+7. An **MCP server** exposes KG tools to external agents
 
-The key novel contribution: the **CONVERGENT edge** — connecting claims supported independently by multiple methodologies. Higher convergent count = stronger patent candidate.
+**The central novel contribution:** the `CONVERGENT` edge — connecting claims independently supported by multiple methodologies. Claims with high convergent count and methodology diversity are the strongest patent candidates.
 
 ---
 
@@ -31,20 +33,26 @@ Raw idea (text)
       v
 Problem node -> FalkorDB KG
       |
-      +---> TRIZAgent          -> Contradiction, Principle, Claim nodes
+      +---> TRIZAgent              -> Contradiction, Principle, Claim nodes
       |
-      +---> DesignThinkingAgent -> UserNeed, Claim nodes
+      +---> DesignThinkingAgent    -> UserNeed, Claim nodes
       |
-      +---> SCAMPERAgent        -> Transformation, Claim nodes
+      +---> SCAMPERAgent           -> Transformation, Claim nodes
       |
-      v
-SynthesisAgent   -> CONVERGENT edges between cross-methodology claims
-      |
-      v
-PatentAgent      -> Patent draft grounded in KG subgraph
+      +---> PriorArtAgent          -> PriorArt nodes (arXiv search)
       |
       v
-MCP Server       -> Exposes KG tools to external agents
+EmbeddingSynthesisAgent            -> CONVERGENT edges (cosine similarity)
+      |
+      v
+InnovationScore                    -> ranked claim list
+      |
+      v
+PatentAgent                        -> Patent draft grounded in KG subgraph
+      |
+      v
+MCP Server                         -> Exposes KG tools to external agents
+Visualizer                         -> HTML + PNG graph image
 ```
 
 ---
@@ -53,14 +61,14 @@ MCP Server       -> Exposes KG tools to external agents
 
 ```
 Nodes:
-  Problem(statement, domain)
-  Contradiction(improving, worsening)
-  Principle(name, triz_number, description)
-  UserNeed(persona, job_to_be_done, pain_level)
-  Transformation(scamper_type, description)
-  Analogy(source_domain, mechanism)
-  PriorArt(title, source, similarity)
-  Claim(text, methodology, strength)
+  Problem        (statement, domain)
+  Contradiction  (improving, worsening)
+  Principle      (name, triz_number, description)
+  UserNeed       (persona, job_to_be_done, pain_level)
+  Transformation (scamper_type, description)
+  Analogy        (source_domain, mechanism)
+  PriorArt       (title, source, similarity)
+  Claim          (text, methodology, strength)
 
 Edges:
   (Problem)-[:HAS_CONTRADICTION]->(Contradiction)
@@ -75,6 +83,27 @@ Edges:
 
 ---
 
+## InnovationScore
+
+Claims are ranked by a weighted formula:
+
+```
+InnovationScore(c) = 0.4 * convergent_count
+                   + 0.3 * methodology_diversity
+                   + 0.2 * claim_strength
+                   - 0.1 * prior_art_challenge_count
+```
+
+Where:
+- `convergent_count` — CONVERGENT edges on this claim (cross-methodology support)
+- `methodology_diversity` — distinct methodologies independently supporting the claim
+- `claim_strength` — agent-assigned strength score (0–1)
+- `prior_art_challenge_count` — PriorArt nodes challenging this claim
+
+The claim with highest InnovationScore becomes the primary independent claim in the patent draft.
+
+---
+
 ## File structure
 
 ```
@@ -83,11 +112,15 @@ ideaforge/
 │   ├── schema.py               # Node/edge types and Cypher templates
 │   └── graph.py                # FalkorDB graph operations
 ├── agents/
-│   ├── methodology_agents.py   # TRIZ, DesignThinking, SCAMPER, Synthesis agents
+│   ├── methodology_agents.py   # TRIZ, DesignThinking, SCAMPER agents
+│   ├── prior_art_agent.py      # arXiv search -> PriorArt nodes
+│   ├── embedding_synthesis.py  # Cosine similarity convergence detection
+│   ├── innovation_score.py     # InnovationScore computation and ranking
 │   └── patent_agent.py         # Patent claim drafting from KG
 ├── mcp_server/
 │   └── server.py               # MCP server exposing KG tools
-├── ideaforge.py                # Main pipeline entry point
+├── visualize.py                # pyvis HTML + networkx PNG graph visualization
+├── ideaforge.py                # Main pipeline entry point (8-step)
 ├── docker-compose.yml
 └── requirements.txt
 ```
@@ -113,21 +146,49 @@ ollama serve
 
 ## Usage
 
-```bash
-# Run on your idea
-python ideaforge.py --idea "A voice-first legal assistant in Hindi for rural India"
+### Run the full pipeline
 
-# Save patent draft to file
+```bash
+python ideaforge.py --idea "A voice-first legal assistant in Hindi for rural India"
+```
+
+### Save patent draft + visualize
+
+```bash
 python ideaforge.py \
   --idea "A voice-first legal assistant in Hindi for rural India" \
   --domain "legal technology" \
   --output patent_draft.txt
 
-# Dry run (no Ollama needed — test pipeline only)
-python ideaforge.py --idea "your idea" --dry-run
+python visualize.py --static
+```
 
-# Use a better model
+### Dry run (no Ollama needed — test pipeline only)
+
+```bash
+python ideaforge.py --idea "your idea" --dry-run
+```
+
+### Use a better model
+
+```bash
 OLLAMA_MODEL=llama3.2 python ideaforge.py --idea "your idea"
+OLLAMA_MODEL=mistral python ideaforge.py --idea "your idea"
+```
+
+---
+
+## Pipeline steps
+
+```
+Step 1: Ingest idea into knowledge graph
+Step 2: TRIZ contradiction analysis
+Step 3: Design Thinking user needs analysis
+Step 4: SCAMPER transformations
+Step 5: Prior art search (arXiv)
+Step 6: Embedding-based convergence detection
+Step 7: InnovationScore ranking
+Step 8: Patent draft from KG subgraph
 ```
 
 ---
@@ -135,30 +196,37 @@ OLLAMA_MODEL=llama3.2 python ideaforge.py --idea "your idea"
 ## Example output
 
 ```
-IdeaForge Complete
-=======================================================
-Knowledge Graph summary:
-  Claim: 3 nodes
-  Contradiction: 1 nodes
-  Principle: 2 nodes
-  Problem: 1 nodes
-  Transformation: 3 nodes
-  UserNeed: 2 nodes
-
-Top patent candidates:
-  [TRIZ] A method for resolving the contradiction between...
-  Convergent support: 2
-
-  [DesignThinking] A system enabling rural users to...
-  Convergent support: 1
+InnovationScore Report
+============================================================
+Rank  Score    Conv   Div   PA    Claim
+------------------------------------------------------------
+1     0.712    2      2     0     [TRIZ] A method for resolving...
+2     0.540    1      1     0     [DesignThinking] A system enabling...
+3     0.480    0      1     1     [SCAMPER] A transformed approach...
 
 PATENT DRAFT — IdeaForge
-=======================================================
+============================================================
 TITLE: Voice-Enabled Legal Assistance System for Low-Resource Languages
-...
-CLAIM 1: A method comprising...
+
+CLAIM 1: A method comprising a knowledge graph representing legal
+obligations, court proceedings, and party relationships...
+
 CLAIM 2: The method of claim 1, wherein...
 ```
+
+---
+
+## Visualization
+
+```bash
+# Interactive HTML (for demos)
+python visualize.py
+
+# Static PNG (for paper figure)
+python visualize.py --static
+```
+
+The CONVERGENT edges are shown in pink — they are the visual centrepiece of the graph and the paper's core contribution.
 
 ---
 
@@ -172,7 +240,6 @@ CLAIM 2: The method of claim 1, wherein...
 | `get_kg_summary` | Node count summary |
 | `add_claim` | Add a claim to the KG |
 
-Start the MCP server:
 ```bash
 python mcp_server/server.py
 ```
@@ -181,25 +248,24 @@ python mcp_server/server.py
 
 ## Why this is different from existing work
 
-| System | Methodology | KG | Cross-methodology synthesis | Patent draft |
-|---|---|---|---|---|
-| AutoTRIZ (2024) | TRIZ only | No | No | No |
-| TRIZ Agents (2025) | TRIZ only | No | No | No |
-| LLM+TRIZ Patent (2026) | TRIZ only | No | No | Yes |
-| **IdeaForge** | TRIZ + DT + SCAMPER | **Yes** | **Yes** | **Yes (KG-grounded)** |
+| System | Methodology | Persistent KG | Cross-methodology synthesis | InnovationScore | Patent draft |
+|---|---|---|---|---|---|
+| AutoTRIZ (2024) | TRIZ only | No | No | No | No |
+| TRIZ Agents (ICAART 2025) | TRIZ only | No | No | No | No |
+| LLM+TRIZ Patent (2026) | TRIZ only | No | No | No | Yes |
+| **IdeaForge** | TRIZ + DT + SCAMPER | **Yes** | **Yes (embeddings)** | **Yes** | **Yes (KG-grounded)** |
 
-The key contribution is cross-methodology convergence detection via the CONVERGENT edge — finding claims that emerge independently from multiple methodologies, which are the strongest patent candidates.
+The central argument: innovation methodologies can be interpreted as heterogeneous reasoning operators acting over a shared persistent innovation graph. Cross-methodology convergence — the same claim emerging independently from multiple operators — is a principled signal of non-obviousness.
 
 ---
 
-## Note on TinyLlama
+## Limitations
 
-The framework is model-agnostic. TinyLlama (1.1B) produces basic outputs. Better results with larger models:
-
-```bash
-OLLAMA_MODEL=llama3.2 python ideaforge.py --idea "your idea"
-OLLAMA_MODEL=mistral python ideaforge.py --idea "your idea"
-```
+- LLM quality affects TRIZ/DT/SCAMPER agent outputs — TinyLlama produces basic results
+- Convergence detection uses semantic similarity, not true logical equivalence
+- Prior art search is limited to arXiv — patents.google.com integration is future work
+- No legal validation — this is a research prototype, not a patent filing tool
+- InnovationScore is heuristic — formal novelty cannot be guaranteed
 
 ---
 
