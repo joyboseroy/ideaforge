@@ -145,7 +145,7 @@ Be specific and technical. Base claims on the KG analysis above."""
 
         # Fallback if parsing failed
         if not sections["title"]:
-            sections["title"] = f"System and Method for {idea[:50]}"
+            sections["title"] = f"System and Method for {idea}"
         if not sections["claims"]:
             sections["claims"] = [
                 c.get("text", "") for c in strongest[:3]
