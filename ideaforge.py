@@ -34,7 +34,6 @@ _PLACEHOLDER = (
     TRIZAgent,
     DesignThinkingAgent,
     SCAMPERAgent,
-    SynthesisAgent,
 )
 from agents.patent_agent import PatentAgent
 
@@ -120,7 +119,7 @@ def run_ideaforge(
 
         # Step 5: Synthesis
         print("Step 5: Cross-methodology convergence detection...")
-        synthesis = SynthesisAgent(graph)
+        synthesis = EmbeddingSynthesisAgent(graph, threshold=0.65)
         convergent_pairs = synthesis.run()
         print(f"  Convergent pairs found: {len(convergent_pairs)}\n")
 
