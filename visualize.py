@@ -287,7 +287,7 @@ def main():
     parser = argparse.ArgumentParser(description="Visualize IdeaForge KG")
     parser.add_argument("--graph", default="ideaforge", help="Graph name")
     parser.add_argument("--host", default="localhost")
-    parser.add_argument("--port", type=int, default=6379)
+    parser.add_argument("--port", type=int, default=int(os.getenv("FALKORDB_PORT", "6379")))
     parser.add_argument("--output", default="ideaforge_graph.html")
     parser.add_argument("--static", action="store_true",
                         help="Also generate static PNG")
