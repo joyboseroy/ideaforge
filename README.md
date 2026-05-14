@@ -5,7 +5,7 @@
 Companion code for the paper:
 
 IdeaForge: A Knowledge Graph-Grounded Multi-Agent Framework for Cross-Methodology Innovation Analysis and Patent Claim Generation
-Read Paper on arXiv https://arxiv.org/abs/2605.13311 
+https://arxiv.org/abs/2605.13311 
 
 ---
 
