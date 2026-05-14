@@ -4,8 +4,8 @@
 
 Companion code for the paper:
 
-> *IdeaForge: Cross-Methodology Convergent Novelty Detection via Knowledge Graph for Automated Patent Claim Generation*
-> Joy Bose — arXiv (forthcoming)
+IdeaForge: A Knowledge Graph-Grounded Multi-Agent Framework for Cross-Methodology Innovation Analysis and Patent Claim Generation
+Read Paper on arXiv https://arxiv.org/abs/2605.13311 
 
 ---
 
@@ -271,10 +271,10 @@ The central argument: innovation methodologies can be interpreted as heterogeneo
 
 ## Citation
 
-To be updated when published on arXiv.
-
 ```
-Bose, J. IdeaForge: Cross-Methodology Convergent Novelty Detection
-via Knowledge Graph for Automated Patent Claim Generation.
-arXiv (forthcoming).
+@article{bose2026ideaforge,
+  title={IdeaForge: A Knowledge Graph-Grounded Multi-Agent Framework for Cross-Methodology Innovation Analysis and Patent Claim Generation},
+  author={Bose, Joy},
+  journal={arXiv preprint arXiv:2605.13311},
+  year={2026}
 ```
