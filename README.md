@@ -4,8 +4,8 @@
 
 Companion code for the paper:
 
-IdeaForge: A Knowledge Graph-Grounded Multi-Agent Framework for Cross-Methodology Innovation Analysis and Patent Claim Generation
-https://arxiv.org/abs/2605.13311 
+**IdeaForge: A Knowledge Graph-Grounded Multi-Agent Framework for Cross-Methodology Innovation Analysis and Patent Claim Generation**
+https://arxiv.org/abs/2605.13311
 
 ---
 
@@ -17,7 +17,7 @@ Most AI innovation tools apply a single methodology (TRIZ, Design Thinking, or S
 2. A **prior art agent** searches arXiv for related work and populates PriorArt nodes
 3. An **embedding synthesis agent** uses sentence-transformer cosine similarity to detect claims independently derived by multiple methodologies — these are the strongest patent candidates
 4. **InnovationScore** ranks all claims using a weighted formula combining convergence, diversity, strength, and prior art challenge count
-5. A **patent agent** drafts structured claims grounded in the KG subgraph — not raw LLM hallucination
+5. A **patent agent** drafts structured claims grounded in the KG subgraph
 6. A **visualizer** generates interactive HTML and static PNG graph images for demos and papers
 7. An **MCP server** exposes KG tools to external agents
 
@@ -66,7 +66,7 @@ Nodes:
   Principle      (name, triz_number, description)
   UserNeed       (persona, job_to_be_done, pain_level)
   Transformation (scamper_type, description)
-  Analogy        (source_domain, mechanism)
+  Analogy        (source_domain, mechanism) [reserved for future biomimicry agent]
   PriorArt       (title, source, similarity)
   Claim          (text, methodology, strength)
 
@@ -97,7 +97,7 @@ InnovationScore(c) = 0.4 * convergent_count
 Where:
 - `convergent_count` — CONVERGENT edges on this claim (cross-methodology support)
 - `methodology_diversity` — distinct methodologies independently supporting the claim
-- `claim_strength` — agent-assigned strength score (0–1)
+- `claim_strength` — fixed by methodology: TRIZ=0.7, DesignThinking=0.65, SCAMPER=0.6
 - `prior_art_challenge_count` — PriorArt nodes challenging this claim
 
 The claim with highest InnovationScore becomes the primary independent claim in the patent draft.
@@ -120,6 +120,7 @@ ideaforge/
 ├── mcp_server/
 │   └── server.py               # MCP server exposing KG tools
 ├── visualize.py                # pyvis HTML + networkx PNG graph visualization
+├── run_experiments.py          # Multi-domain evaluation + threshold sensitivity
 ├── ideaforge.py                # Main pipeline entry point (8-step)
 ├── docker-compose.yml
 └── requirements.txt
@@ -163,7 +164,7 @@ python ideaforge.py \
 python visualize.py --static
 ```
 
-### Dry run (no Ollama needed — test pipeline only)
+### Dry run (no Ollama needed)
 
 ```bash
 python ideaforge.py --idea "your idea" --dry-run
@@ -174,6 +175,12 @@ python ideaforge.py --idea "your idea" --dry-run
 ```bash
 OLLAMA_MODEL=llama3.2 python ideaforge.py --idea "your idea"
 OLLAMA_MODEL=mistral python ideaforge.py --idea "your idea"
+```
+
+### Reproduce paper experiments
+
+```bash
+FALKORDB_PORT=6380 python run_experiments.py
 ```
 
 ---
@@ -193,26 +200,44 @@ Step 8: Patent draft from KG subgraph
 
 ---
 
-## Example output
+## Example output (actual results, legal technology use case)
 
 ```
 InnovationScore Report
 ============================================================
 Rank  Score    Conv   Div   PA    Claim
 ------------------------------------------------------------
-1     0.712    2      2     0     [TRIZ] A method for resolving...
-2     0.540    1      1     0     [DesignThinking] A system enabling...
-3     0.480    0      1     1     [SCAMPER] A transformed approach...
+1     0.500    2      2     0     [TRIZ] A method for resolving the contradiction
+                                  between accessibility and complexity of legal
+                                  language, applying Segmentation and Preliminary
+                                  Action principles to voice-based delivery
+2     0.310    1      1     0     [DesignThinking] A user-centred system enabling
+                                  rural citizens to query legal rights in Hindi
+                                  via voice, without needing a lawyer
+3     0.220    0      1     0     [SCAMPER] A transformed approach substituting
+                                  text-based legal interfaces with voice-first
+                                  interaction, adapting medical triage dialogue
+                                  patterns to legal question routing
 
-PATENT DRAFT — IdeaForge
-============================================================
-TITLE: Voice-Enabled Legal Assistance System for Low-Resource Languages
+Convergent pairs detected: 3
+  TRIZ + DesignThinking: 0.837
+  TRIZ + SCAMPER:        0.817
+  DesignThinking + SCAMPER: 0.819
 
-CLAIM 1: A method comprising a knowledge graph representing legal
-obligations, court proceedings, and party relationships...
-
-CLAIM 2: The method of claim 1, wherein...
+Knowledge Graph: 16 nodes, 10 edges
 ```
+
+---
+
+## Multi-domain results (from paper)
+
+| Use Case | Domain | Nodes | Conv. pairs | Top score |
+|---|---|---|---|---|
+| Voice-first legal assistant (Hindi) | Legal tech | 16 | 3 | 0.500 |
+| Sepsis early warning (wearables) | Healthcare | 16 | 1 | 0.353 |
+| Adaptive tutoring for dyscalculia | EdTech | 16 | 3 | 0.500 |
+| Drone crop disease detection | Agriculture | 16 | 3 | 0.467 |
+| Sign language interpretation | Accessibility | 16 | 3 | 0.500 |
 
 ---
 
@@ -226,7 +251,7 @@ python visualize.py
 python visualize.py --static
 ```
 
-The CONVERGENT edges are shown in pink — they are the visual centrepiece of the graph and the paper's core contribution.
+CONVERGENT edges are shown in pink — they are the visual centrepiece of the graph and the paper's core contribution.
 
 ---
 
@@ -261,20 +286,21 @@ The central argument: innovation methodologies can be interpreted as heterogeneo
 
 ## Limitations
 
-- LLM quality affects TRIZ/DT/SCAMPER agent outputs — TinyLlama produces basic results
+- LLM quality affects agent outputs — TinyLlama produces basic results; larger models produce richer claims
 - Convergence detection uses semantic similarity, not true logical equivalence
-- Prior art search is limited to arXiv — patents.google.com integration is future work
+- Prior art search is limited to arXiv — patent database integration is future work
 - No legal validation — this is a research prototype, not a patent filing tool
-- InnovationScore is heuristic — formal novelty cannot be guaranteed
+- InnovationScore weights are heuristic — formal novelty cannot be guaranteed
 
 ---
 
 ## Citation
 
-```
+```bibtex
 @article{bose2026ideaforge,
   title={IdeaForge: A Knowledge Graph-Grounded Multi-Agent Framework for Cross-Methodology Innovation Analysis and Patent Claim Generation},
   author={Bose, Joy},
   journal={arXiv preprint arXiv:2605.13311},
   year={2026}
+}
 ```
